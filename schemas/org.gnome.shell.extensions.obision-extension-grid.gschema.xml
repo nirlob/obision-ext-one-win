@@ -2,37 +2,36 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.obision-extension-grid" path="/org/gnome/shell/extensions/obision-extension-grid/">
     
-    <key name="grid-columns" type="i">
-      <default>4</default>
-      <range min="2" max="8"/>
-      <summary>Grid Columns</summary>
-      <description>Number of columns in the grid layout</description>
+    <key name="panel-width" type="i">
+      <default>450</default>
+      <range min="300" max="700"/>
+      <summary>Panel Width</summary>
+      <description>Width of the side panel in pixels</description>
     </key>
 
-    <key name="grid-rows" type="i">
-      <default>3</default>
-      <range min="2" max="8"/>
-      <summary>Grid Rows</summary>
-      <description>Number of rows in the grid layout</description>
+    <key name="thumbnail-height" type="i">
+      <default>280</default>
+      <range min="200" max="500"/>
+      <summary>Thumbnail Height</summary>
+      <description>Height of window thumbnails in pixels</description>
     </key>
 
-    <key name="show-current-large" type="b">
+    <key name="panel-position" type="s">
+      <default>"left"</default>
+      <summary>Panel Position</summary>
+      <description>Position of the window panel (left or right)</description>
+    </key>
+
+    <key name="auto-minimize" type="b">
       <default>true</default>
-      <summary>Highlight Current Application</summary>
-      <description>Show the focused application in a larger cell (2x2)</description>
+      <summary>Minimize Inactive Windows</summary>
+      <description>Automatically minimize windows not shown in the panel</description>
     </key>
 
-    <key name="show-titles" type="b">
+    <key name="show-app-names" type="b">
       <default>true</default>
-      <summary>Show Window Titles</summary>
-      <description>Display window titles in the grid cells</description>
-    </key>
-
-    <key name="grid-opacity" type="i">
-      <default>85</default>
-      <range min="0" max="100"/>
-      <summary>Background Opacity</summary>
-      <description>Opacity of the grid overlay background (0-100%)</description>
+      <summary>Show Application Names</summary>
+      <description>Display application names below thumbnails</description>
     </key>
 
     <key name="toggle-grid" type="as">

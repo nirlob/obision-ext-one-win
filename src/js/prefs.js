@@ -21,38 +21,38 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         });
         page.add(layoutGroup);
 
-        // Grid Columns
-        const columnsRow = new Adw.SpinRow({
-            title: 'Grid Columns',
-            subtitle: 'Number of columns in the grid',
+        // Panel Width
+        const panelWidthRow = new Adw.SpinRow({
+            title: 'Panel Width',
+            subtitle: 'Width of the side panel in pixels',
             adjustment: new Gtk.Adjustment({
-                lower: 2,
-                upper: 8,
-                step_increment: 1,
+                lower: 300,
+                upper: 700,
+                step_increment: 10,
             }),
         });
-        layoutGroup.add(columnsRow);
+        layoutGroup.add(panelWidthRow);
         settings.bind(
-            'grid-columns',
-            columnsRow,
+            'panel-width',
+            panelWidthRow,
             'value',
             Gio.SettingsBindFlags.DEFAULT
         );
 
-        // Grid Rows
-        const rowsRow = new Adw.SpinRow({
-            title: 'Grid Rows',
-            subtitle: 'Number of rows in the grid',
+        // Thumbnail Height
+        const thumbnailHeightRow = new Adw.SpinRow({
+            title: 'Thumbnail Height',
+            subtitle: 'Height of window thumbnails in pixels',
             adjustment: new Gtk.Adjustment({
-                lower: 2,
-                upper: 8,
-                step_increment: 1,
+                lower: 200,
+                upper: 500,
+                step_increment: 10,
             }),
         });
-        layoutGroup.add(rowsRow);
+        layoutGroup.add(thumbnailHeightRow);
         settings.bind(
-            'grid-rows',
-            rowsRow,
+            'thumbnail-height',
+            thumbnailHeightRow,
             'value',
             Gio.SettingsBindFlags.DEFAULT
         );
@@ -64,47 +64,44 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         });
         page.add(displayGroup);
 
-        // Show Current App Large
-        const showLargeRow = new Adw.SwitchRow({
-            title: 'Highlight Current Application',
-            subtitle: 'Show the focused application in a larger cell',
+        // Panel Position
+        const panelPositionRow = new Adw.ComboRow({
+            title: 'Panel Position',
+            subtitle: 'Position of the window panel',
         });
-        displayGroup.add(showLargeRow);
+        const positionModel = new Gtk.StringList();
+        positionModel.append('Left');
+        positionModel.append('Right');
+        panelPositionRow.set_model(positionModel);
+        panelPositionRow.set_selected(settings.get_string('panel-position') === 'left' ? 0 : 1);
+        panelPositionRow.connect('notify::selected', () => {
+            settings.set_string('panel-position', panelPositionRow.get_selected() === 0 ? 'left' : 'right');
+        });
+        displayGroup.add(panelPositionRow);
+
+        // Auto-hide Inactive Windows
+        const autoHideRow = new Adw.SwitchRow({
+            title: 'Minimize Inactive Windows',
+            subtitle: 'Automatically minimize windows not shown in the panel',
+        });
+        displayGroup.add(autoHideRow);
         settings.bind(
-            'show-current-large',
-            showLargeRow,
+            'auto-minimize',
+            autoHideRow,
             'active',
             Gio.SettingsBindFlags.DEFAULT
         );
 
-        // Show Window Titles
-        const showTitlesRow = new Adw.SwitchRow({
-            title: 'Show Window Titles',
-            subtitle: 'Display window titles in grid cells',
+        // Show App Names
+        const showAppNamesRow = new Adw.SwitchRow({
+            title: 'Show Application Names',
+            subtitle: 'Display app names below thumbnails',
         });
-        displayGroup.add(showTitlesRow);
+        displayGroup.add(showAppNamesRow);
         settings.bind(
-            'show-titles',
-            showTitlesRow,
+            'show-app-names',
+            showAppNamesRow,
             'active',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-
-        // Grid Opacity
-        const opacityRow = new Adw.SpinRow({
-            title: 'Background Opacity',
-            subtitle: 'Opacity of the grid overlay background (0-100%)',
-            adjustment: new Gtk.Adjustment({
-                lower: 0,
-                upper: 100,
-                step_increment: 5,
-            }),
-        });
-        displayGroup.add(opacityRow);
-        settings.bind(
-            'grid-opacity',
-            opacityRow,
-            'value',
             Gio.SettingsBindFlags.DEFAULT
         );
 
@@ -115,9 +112,9 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         });
         page.add(shortcutsGroup);
 
-        // Toggle Grid Shortcut
+        // Toggle Stage Manager Shortcut
         const shortcutRow = new Adw.ActionRow({
-            title: 'Toggle Grid Overlay',
+            title: 'Toggle Stage Manager',
             subtitle: settings.get_strv('toggle-grid')[0] || 'Not set',
         });
         

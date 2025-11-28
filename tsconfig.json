@@ -15,7 +15,8 @@
   },
   "include": [
     "src/js/extension.js",
-    "src/js/prefs.js"
+    "src/js/prefs.js",
+    "types.d.ts"
   ],
   "exclude": [
     "node_modules",

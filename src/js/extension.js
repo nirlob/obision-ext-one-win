@@ -6,196 +6,284 @@ import Meta from 'gi://Meta';
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
-const GridOverlay = GObject.registerClass(
-class GridOverlay extends St.Widget {
+const PANEL_WIDTH = 450;
+const THUMBNAIL_HEIGHT = 280;
+const THUMBNAIL_SPACING = 12;
+const PANEL_PADDING = 16;
+
+// Window thumbnail in the side panel
+const WindowThumbnail = GObject.registerClass(
+class WindowThumbnail extends St.Button {
+    _init(window, stageManager) {
+        super._init({
+            style_class: 'stage-manager-thumbnail',
+            x_expand: true,
+        });
+
+        this._window = window;
+        this._stageManager = stageManager;
+        
+        const box = new St.BoxLayout({
+            vertical: true,
+            style_class: 'stage-manager-thumbnail-box',
+        });
+
+        // Window clone container with fixed dimensions
+        this._cloneContainer = new St.Bin({
+            style_class: 'stage-manager-clone-container',
+            height: THUMBNAIL_HEIGHT,
+            x_expand: true,
+            x_align: Clutter.ActorAlign.FILL,
+            y_align: Clutter.ActorAlign.FILL,
+            clip_to_allocation: true,
+        });
+
+        // Create window clone
+        this._createClone();
+
+        // Info box with icon and labels
+        const infoBox = new St.BoxLayout({
+            style_class: 'stage-manager-info-box',
+            x_align: Clutter.ActorAlign.START,
+        });
+
+        // App icon
+        const app = Shell.WindowTracker.get_default().get_window_app(window);
+        if (app) {
+            const icon = app.create_icon_texture(24);
+            if (icon) {
+                icon.style_class = 'stage-manager-app-icon';
+                infoBox.add_child(icon);
+            }
+        }
+
+        // Labels box
+        const labelsBox = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+        });
+
+        // Window title
+        this._titleLabel = new St.Label({
+            text: window.get_title() || 'Untitled',
+            style_class: 'stage-manager-window-title',
+        });
+        this._titleLabel.clutter_text.set_ellipsize(3);
+
+        // App name
+        this._appLabel = new St.Label({
+            text: app ? app.get_name() : 'Unknown',
+            style_class: 'stage-manager-app-name',
+        });
+        this._appLabel.clutter_text.set_ellipsize(3);
+
+        labelsBox.add_child(this._titleLabel);
+        labelsBox.add_child(this._appLabel);
+        infoBox.add_child(labelsBox);
+
+        box.add_child(this._cloneContainer);
+        box.add_child(infoBox);
+        this.set_child(box);
+
+        // Click to activate window
+        this.connect('clicked', () => {
+            this._window.activate(global.get_current_time());
+        });
+
+        // Update on title changes
+        this._notifyTitleId = window.connect('notify::title', () => {
+            this._titleLabel.text = window.get_title() || 'Untitled';
+        });
+    }
+
+    _createClone() {
+        const windowActor = this._window.get_compositor_private();
+        if (!windowActor) return;
+
+        const clone = new Clutter.Clone({
+            source: windowActor,
+        });
+
+        // Get window dimensions
+        const [width, height] = windowActor.get_size();
+        
+        // Calculate scale to fill the entire container while maintaining aspect ratio
+        const containerWidth = PANEL_WIDTH - PANEL_PADDING * 2;
+        const containerHeight = THUMBNAIL_HEIGHT;
+        
+        // Use cover scaling (fills container, may crop)
+        const scale = Math.max(containerWidth / width, containerHeight / height);
+        
+        // Apply scale
+        clone.set_scale(scale, scale);
+        
+        // Center the clone
+        const scaledWidth = width * scale;
+        const scaledHeight = height * scale;
+        clone.set_position(
+            (containerWidth - scaledWidth) / 2,
+            (containerHeight - scaledHeight) / 2
+        );
+        
+        this._cloneContainer.set_child(clone);
+        this._clone = clone;
+    }
+
+    destroy() {
+        if (this._notifyTitleId) {
+            this._window.disconnect(this._notifyTitleId);
+            this._notifyTitleId = null;
+        }
+        super.destroy();
+    }
+});
+
+// Side panel with window thumbnails
+const StageManagerPanel = GObject.registerClass(
+class StageManagerPanel extends St.BoxLayout {
     _init(extension) {
         super._init({
-            name: 'obision-grid-overlay',
-            reactive: true,
-            visible: false,
-            layout_manager: new Clutter.GridLayout({ orientation: Clutter.Orientation.VERTICAL })
+            name: 'stage-manager-panel',
+            vertical: true,
+            style_class: 'stage-manager-panel',
+            width: PANEL_WIDTH,
+            y_align: Clutter.ActorAlign.START,
         });
 
         this._extension = extension;
         this._settings = extension._settings;
-        this._cells = [];
-        this._windows = [];
-        
-        this._buildGrid();
+        this._thumbnails = [];
+
+        // Scroll view for thumbnails
+        this._scrollView = new St.ScrollView({
+            style_class: 'stage-manager-scroll',
+            y_expand: true,
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+        });
+
+        this._thumbnailBox = new St.BoxLayout({
+            vertical: true,
+            style_class: 'stage-manager-thumbnail-container',
+        });
+
+        this._scrollView.add_child(this._thumbnailBox);
+        this.add_child(this._scrollView);
     }
 
-    _buildGrid() {
-        // Clear existing cells
-        this.destroy_all_children();
-        this._cells = [];
+    updateThumbnails() {
+        // Clear existing thumbnails
+        this._thumbnailBox.destroy_all_children();
+        this._thumbnails = [];
 
-        const columns = this._settings.get_int('grid-columns');
-        const rows = this._settings.get_int('grid-rows');
-        const showCurrentLarge = this._settings.get_boolean('show-current-large');
-
-        // Get active workspace windows
         const workspace = global.workspace_manager.get_active_workspace();
-        this._windows = workspace.list_windows().filter(w => 
+        const windows = workspace.list_windows().filter(w =>
             !w.skip_taskbar && w.get_window_type() === Meta.WindowType.NORMAL
         );
 
         const focusWindow = global.display.focus_window;
-        const layout = this.layout_manager;
 
-        let cellIndex = 0;
-        
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < columns; col++) {
-                // First cell is large for current app if enabled
-                const isLargeCell = showCurrentLarge && row === 0 && col === 0;
-                const cellWidth = isLargeCell ? 2 : 1;
-                const cellHeight = isLargeCell ? 2 : 1;
-
-                if (cellIndex < this._windows.length) {
-                    const window = this._windows[cellIndex];
-                    const isFocused = window === focusWindow;
-                    const cell = this._createCell(window, isLargeCell, isFocused);
-                    
-                    layout.attach(cell, col, row, cellWidth, cellHeight);
-                    this._cells.push({ cell, window });
-                }
-
-                cellIndex++;
-                
-                // Skip next cell if large cell
-                if (isLargeCell) {
-                    col++;
-                }
+        // Add thumbnails for all windows (including active one)
+        windows.forEach(window => {
+            const thumbnail = new WindowThumbnail(window, this._extension);
+            // Mark active window
+            if (window === focusWindow) {
+                thumbnail.add_style_class_name('stage-manager-thumbnail-active');
             }
-        }
+            this._thumbnailBox.add_child(thumbnail);
+            this._thumbnails.push(thumbnail);
+        });
     }
 
-    _createCell(window, isLarge, isFocused) {
-        const cell = new St.Button({
-            style_class: 'obision-grid-cell' + (isFocused ? ' obision-grid-cell-focused' : '') + (isLarge ? ' obision-grid-cell-large' : ''),
-            x_expand: true,
-            y_expand: true,
-        });
-
-        const box = new St.BoxLayout({
-            vertical: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-
-        // Window title
-        const title = new St.Label({
-            text: window.get_title() || 'Untitled',
-            style_class: 'obision-grid-cell-title' + (isLarge ? ' obision-grid-cell-title-large' : ''),
-        });
-        title.clutter_text.set_line_wrap(true);
-        title.clutter_text.set_ellipsize(3); // PANGO_ELLIPSIZE_END
-
-        // App name
-        const app = Shell.WindowTracker.get_default().get_window_app(window);
-        const appName = new St.Label({
-            text: app ? app.get_name() : 'Unknown',
-            style_class: 'obision-grid-cell-app' + (isLarge ? ' obision-grid-cell-app-large' : ''),
-        });
-
-        box.add_child(title);
-        box.add_child(appName);
-
-        cell.set_child(box);
-
-        // Click handler to activate window
-        cell.connect('clicked', () => {
-            window.activate(global.get_current_time());
-            this.hide();
-        });
-
-        return cell;
-    }
-
-    show() {
-        this._buildGrid();
-        super.show();
-        global.stage.set_key_focus(this);
-    }
-
-    hide() {
-        super.hide();
-    }
-
-    vfunc_key_press_event(event) {
-        const symbol = event.get_key_symbol();
-        
-        if (symbol === Clutter.KEY_Escape) {
-            this.hide();
-            return Clutter.EVENT_STOP;
-        }
-        
-        return Clutter.EVENT_PROPAGATE;
+    destroy() {
+        this._thumbnails = [];
+        super.destroy();
     }
 });
 
 export default class ObisionExtensionGrid extends Extension {
     enable() {
         this._settings = this.getSettings();
+        this._active = false;
+        this._originalFrames = new Map();
         
-        // Create grid overlay
-        this._gridOverlay = new GridOverlay(this);
-        Main.layoutManager.addChrome(this._gridOverlay, {
+        // Create stage manager panel
+        this._panel = new StageManagerPanel(this);
+        Main.layoutManager.addChrome(this._panel, {
             affectsStruts: false,
-            trackFullscreen: true
+            trackFullscreen: false,
         });
+        this._panel.hide();
 
-        // Position overlay to cover the whole screen
-        this._gridOverlay.set_position(0, 0);
-        this._gridOverlay.set_size(
-            global.screen_width,
-            global.screen_height
-        );
+        // Position panel on the left
+        this._updatePanelPosition();
 
-        // Add keybinding to toggle grid
+        // Add keybinding to toggle stage manager
         Main.wm.addKeybinding(
             'toggle-grid',
             this._settings,
             Meta.KeyBindingFlags.NONE,
             Shell.ActionMode.NORMAL,
-            () => this._toggleGrid()
+            () => this._toggleStageManager()
         );
         
-        // Connect to settings changes
-        this._settingsChangedId = this._settings.connect('changed', () => {
-            this._onSettingsChanged();
-        });
-
         // Monitor for window changes
-        this._windowAddedId = global.display.connect('window-created', () => {
-            if (this._gridOverlay.visible) {
-                this._gridOverlay._buildGrid();
+        this._windowCreatedId = global.display.connect('window-created', (display, window) => {
+            if (this._active) {
+                this._onWindowAdded(window);
             }
         });
+
+        this._windowFocusId = global.display.connect('notify::focus-window', () => {
+            if (this._active) {
+                this._updateLayout();
+            }
+        });
+
+        // Monitor size changes
+        this._monitorsChangedId = Main.layoutManager.connect('monitors-changed', () => {
+            this._updatePanelPosition();
+            if (this._active) {
+                this._updateLayout();
+            }
+        });
+
+        // Activate Stage Manager automatically on startup
+        this._activateStageManager();
 
         log('Obision Extension Grid enabled');
     }
 
     disable() {
+        // Disable stage manager if active
+        if (this._active) {
+            this._deactivateStageManager();
+        }
+
         // Remove keybinding
         Main.wm.removeKeybinding('toggle-grid');
 
         // Disconnect signals
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
+        if (this._windowCreatedId) {
+            global.display.disconnect(this._windowCreatedId);
+            this._windowCreatedId = null;
         }
 
-        if (this._windowAddedId) {
-            global.display.disconnect(this._windowAddedId);
-            this._windowAddedId = null;
+        if (this._windowFocusId) {
+            global.display.disconnect(this._windowFocusId);
+            this._windowFocusId = null;
         }
 
-        // Destroy overlay
-        if (this._gridOverlay) {
-            Main.layoutManager.removeChrome(this._gridOverlay);
-            this._gridOverlay.destroy();
-            this._gridOverlay = null;
+        if (this._monitorsChangedId) {
+            Main.layoutManager.disconnect(this._monitorsChangedId);
+            this._monitorsChangedId = null;
+        }
+
+        // Destroy panel
+        if (this._panel) {
+            Main.layoutManager.removeChrome(this._panel);
+            this._panel.destroy();
+            this._panel = null;
         }
         
         this._settings = null;
@@ -203,18 +291,96 @@ export default class ObisionExtensionGrid extends Extension {
         log('Obision Extension Grid disabled');
     }
 
-    _toggleGrid() {
-        if (this._gridOverlay.visible) {
-            this._gridOverlay.hide();
+    _toggleStageManager() {
+        if (this._active) {
+            this._deactivateStageManager();
         } else {
-            this._gridOverlay.show();
+            this._activateStageManager();
         }
     }
 
-    _onSettingsChanged() {
-        // Rebuild grid when settings change
-        if (this._gridOverlay && this._gridOverlay.visible) {
-            this._gridOverlay._buildGrid();
+    _activateStageManager() {
+        this._active = true;
+        this._panel.show();
+        this._updateLayout();
+    }
+
+    _deactivateStageManager() {
+        this._active = false;
+        this._panel.hide();
+        this._restoreWindowFrames();
+    }
+
+    _updatePanelPosition() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        this._panel.set_position(monitor.x, monitor.y);
+        this._panel.set_height(monitor.height);
+    }
+
+    _updateLayout() {
+        if (!this._active) return;
+
+        // Update thumbnails in panel
+        this._panel.updateThumbnails();
+
+        // Resize and reposition active window
+        const focusWindow = global.display.focus_window;
+        if (focusWindow && !focusWindow.skip_taskbar && 
+            focusWindow.get_window_type() === Meta.WindowType.NORMAL) {
+            this._adjustActiveWindow(focusWindow);
+        }
+
+        // Minimize or hide other windows (optional based on settings)
+        const workspace = global.workspace_manager.get_active_workspace();
+        const windows = workspace.list_windows();
+        
+        windows.forEach(window => {
+            if (window !== focusWindow && !window.skip_taskbar &&
+                window.get_window_type() === Meta.WindowType.NORMAL) {
+                // Keep them on workspace but not visible in main area
+                window.minimize();
+            }
+        });
+    }
+
+    _adjustActiveWindow(window) {
+        const monitor = Main.layoutManager.primaryMonitor;
+        const panelWidth = PANEL_WIDTH; // No extra margin
+        
+        // Save original frame if not already saved
+        if (!this._originalFrames.has(window)) {
+            this._originalFrames.set(window, window.get_frame_rect());
+        }
+
+        // Calculate new frame for active window
+        const newX = monitor.x + panelWidth;
+        const newY = monitor.y;
+        const newWidth = monitor.width - panelWidth;
+        const newHeight = monitor.height;
+
+        // Move and resize window
+        window.unmaximize(Meta.MaximizeFlags.BOTH);
+        window.move_resize_frame(false, newX, newY, newWidth, newHeight);
+    }
+
+    _restoreWindowFrames() {
+        // Restore all windows to their original positions
+        this._originalFrames.forEach((frame, window) => {
+            try {
+                window.move_resize_frame(false, frame.x, frame.y, frame.width, frame.height);
+                if (window.minimized) {
+                    window.unminimize();
+                }
+            } catch (e) {
+                // Window might be destroyed
+            }
+        });
+        this._originalFrames.clear();
+    }
+
+    _onWindowAdded(window) {
+        if (!window.skip_taskbar && window.get_window_type() === Meta.WindowType.NORMAL) {
+            this._updateLayout();
         }
     }
 }
