@@ -14,49 +14,6 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         });
         window.add(page);
 
-        // Grid Layout Group
-        const layoutGroup = new Adw.PreferencesGroup({
-            title: 'Grid Layout',
-            description: 'Configure the grid dimensions',
-        });
-        page.add(layoutGroup);
-
-        // Panel Width
-        const panelWidthRow = new Adw.SpinRow({
-            title: 'Panel Width',
-            subtitle: 'Width of the side panel in pixels',
-            adjustment: new Gtk.Adjustment({
-                lower: 300,
-                upper: 700,
-                step_increment: 10,
-            }),
-        });
-        layoutGroup.add(panelWidthRow);
-        settings.bind(
-            'panel-width',
-            panelWidthRow,
-            'value',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-
-        // Thumbnail Height
-        const thumbnailHeightRow = new Adw.SpinRow({
-            title: 'Thumbnail Height',
-            subtitle: 'Height of window thumbnails in pixels',
-            adjustment: new Gtk.Adjustment({
-                lower: 200,
-                upper: 500,
-                step_increment: 10,
-            }),
-        });
-        layoutGroup.add(thumbnailHeightRow);
-        settings.bind(
-            'thumbnail-height',
-            thumbnailHeightRow,
-            'value',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-
         // Display Options Group
         const displayGroup = new Adw.PreferencesGroup({
             title: 'Display Options',
@@ -78,6 +35,24 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
             settings.set_string('panel-position', panelPositionRow.get_selected() === 0 ? 'left' : 'right');
         });
         displayGroup.add(panelPositionRow);
+
+        // Resize Handle Width
+        const resizeHandleRow = new Adw.SpinRow({
+            title: 'Resize Handle Width',
+            subtitle: 'Width of the resize handle in pixels',
+            adjustment: new Gtk.Adjustment({
+                lower: 4,
+                upper: 24,
+                step_increment: 1,
+            }),
+        });
+        displayGroup.add(resizeHandleRow);
+        settings.bind(
+            'resize-handle-width',
+            resizeHandleRow,
+            'value',
+            Gio.SettingsBindFlags.DEFAULT
+        );
 
         // Auto-hide Inactive Windows
         const autoHideRow = new Adw.SwitchRow({
@@ -113,9 +88,18 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         page.add(shortcutsGroup);
 
         // Toggle Stage Manager Shortcut
+        const getShortcutText = () => {
+            try {
+                const shortcuts = settings.get_strv('toggle-grid');
+                return (shortcuts && shortcuts.length > 0) ? shortcuts[0] : '<Super>g';
+            } catch (e) {
+                return '<Super>g';
+            }
+        };
+        
         const shortcutRow = new Adw.ActionRow({
             title: 'Toggle Stage Manager',
-            subtitle: settings.get_strv('toggle-grid')[0] || 'Not set',
+            subtitle: getShortcutText(),
         });
         
         const shortcutButton = new Gtk.Button({
@@ -146,11 +130,17 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
             const mask = state & Gtk.accelerator_get_default_mod_mask();
             
             if (keyval && mask) {
-                const shortcut = Gtk.accelerator_name(keyval, mask);
-                settings.set_strv('toggle-grid', [shortcut]);
-                row.subtitle = shortcut;
-                dialog.close();
-                return true;
+                try {
+                    const shortcut = Gtk.accelerator_name(keyval, mask);
+                    if (shortcut) {
+                        settings.set_strv('toggle-grid', [shortcut]);
+                        row.subtitle = shortcut;
+                        dialog.close();
+                        return true;
+                    }
+                } catch (e) {
+                    log(`Error setting shortcut: ${e}`);
+                }
             }
             return false;
         });
@@ -158,8 +148,12 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
 
         dialog.connect('response', (dialog, response) => {
             if (response === 'clear') {
-                settings.set_strv('toggle-grid', ['<Super>g']);
-                row.subtitle = '<Super>g';
+                try {
+                    settings.set_strv('toggle-grid', ['<Super>g']);
+                    row.subtitle = '<Super>g';
+                } catch (e) {
+                    log(`Error setting shortcut: ${e}`);
+                }
             }
             dialog.close();
         });

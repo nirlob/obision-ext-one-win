@@ -6,8 +6,8 @@ import Meta from 'gi://Meta';
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
-const DEFAULT_PANEL_WIDTH = 450;
-const MIN_PANEL_WIDTH = 300;
+const DEFAULT_PANEL_WIDTH = 200;
+const MIN_PANEL_WIDTH = 150;
 const MAX_PANEL_WIDTH = 700;
 const THUMBNAIL_ASPECT_RATIO = 16 / 9; // Width to height ratio
 const THUMBNAIL_SPACING = 12;
@@ -57,6 +57,17 @@ class WindowThumbnail extends St.Widget {
             width: thumbnailWidth,
             clip_to_allocation: true,
         });
+
+        // Bottom panel (semi-transparent overlay at bottom of thumbnail)
+        this._bottomPanel = new St.BoxLayout({
+            style_class: 'stage-manager-thumbnail-bottom-panel',
+            vertical: false,
+            width: thumbnailWidth,
+            height: 48,
+        });
+        // Position at the bottom manually (FixedLayout doesn't respect y_align)
+        this._bottomPanel.set_position(0, thumbnailHeight - 48);
+        this._cloneContainer.add_child(this._bottomPanel);
 
         // Create window clone
         this._createClone();
@@ -146,20 +157,17 @@ class WindowThumbnail extends St.Widget {
             const containerWidth = this._panelWidth - PANEL_PADDING * 2 - 24;
             const containerHeight = calculateThumbnailHeight(this._panelWidth);
             
-            // Get actual window dimensions from the actor
-            const [actorWidth, actorHeight] = windowActor.get_size();
-            
-            // Get frame rect for the content area
+            // Get frame rect (visible window without shadows)
             const frameRect = this._window.get_frame_rect();
             const bufferRect = this._window.get_buffer_rect();
             
-            // Calculate the offset caused by shadows/decorations
-            const offsetX = frameRect.x - bufferRect.x;
-            const offsetY = frameRect.y - bufferRect.y;
+            // Calculate shadow/decoration offsets
+            const shadowLeft = Math.abs(frameRect.x - bufferRect.x);
+            const shadowTop = Math.abs(frameRect.y - bufferRect.y);
             
-            // Use buffer rect size which includes decorations
-            const windowWidth = bufferRect.width;
-            const windowHeight = bufferRect.height;
+            // Use frame rect dimensions (visible window)
+            const windowWidth = frameRect.width;
+            const windowHeight = frameRect.height;
             
             // Calculate scale to fit container while maintaining aspect ratio
             const scaleX = containerWidth / windowWidth;
@@ -169,11 +177,14 @@ class WindowThumbnail extends St.Widget {
             // Apply scale
             clone.set_scale(scale, scale);
             
-            // Center the clone considering the offset
+            // Calculate position to center the visible window content
             const scaledWidth = windowWidth * scale;
             const scaledHeight = windowHeight * scale;
-            const x = (containerWidth - scaledWidth) / 2;
-            const y = (containerHeight - scaledHeight) / 2;
+            
+            // Position considering shadow offsets
+            const x = (containerWidth - scaledWidth) / 2 - (shadowLeft * scale);
+            const y = (containerHeight - scaledHeight) / 2 - (shadowTop * scale);
+            
             clone.set_position(x, y);
             
             this._cloneContainer.add_child(clone);
@@ -194,13 +205,26 @@ class WindowThumbnail extends St.Widget {
                 this._cloneContainer.set_height(containerHeight);
             }
             
+            // Update bottom panel position and size
+            if (this._bottomPanel) {
+                this._bottomPanel.set_width(containerWidth);
+                this._bottomPanel.set_position(0, containerHeight - 48);
+            }
+            
             if (this._clone) {
                 const windowActor = this._window.get_compositor_private();
                 if (windowActor) {
-                    // Use buffer rect which includes all decorations
+                    // Get both rects for proper positioning
+                    const frameRect = this._window.get_frame_rect();
                     const bufferRect = this._window.get_buffer_rect();
-                    const windowWidth = bufferRect.width;
-                    const windowHeight = bufferRect.height;
+                    
+                    // Calculate shadow offsets
+                    const shadowLeft = Math.abs(frameRect.x - bufferRect.x);
+                    const shadowTop = Math.abs(frameRect.y - bufferRect.y);
+                    
+                    // Use frame rect dimensions (visible window)
+                    const windowWidth = frameRect.width;
+                    const windowHeight = frameRect.height;
                     
                     // Recalculate scale
                     const scaleX = containerWidth / windowWidth;
@@ -209,11 +233,11 @@ class WindowThumbnail extends St.Widget {
                     
                     this._clone.set_scale(scale, scale);
                     
-                    // Recenter
+                    // Recenter considering shadows
                     const scaledWidth = windowWidth * scale;
                     const scaledHeight = windowHeight * scale;
-                    const x = (containerWidth - scaledWidth) / 2;
-                    const y = (containerHeight - scaledHeight) / 2;
+                    const x = (containerWidth - scaledWidth) / 2 - (shadowLeft * scale);
+                    const y = (containerHeight - scaledHeight) / 2 - (shadowTop * scale);
                     this._clone.set_position(x, y);
                 }
             }
@@ -243,6 +267,7 @@ const StageManagerPanel = GObject.registerClass(
 class StageManagerPanel extends St.BoxLayout {
     _init(extension) {
         const panelWidth = extension._settings.get_int('panel-width');
+        const resizeHandleWidth = extension._settings.get_int('resize-handle-width');
         
         super._init({
             name: 'stage-manager-panel',
@@ -256,6 +281,15 @@ class StageManagerPanel extends St.BoxLayout {
         this._settings = extension._settings;
         this._thumbnails = [];
         this._panelWidth = panelWidth;
+        this._resizeHandleWidth = resizeHandleWidth;
+
+        // Listen for resize handle width changes
+        this._resizeHandleWidthChangedId = this._settings.connect('changed::resize-handle-width', () => {
+            this._resizeHandleWidth = this._settings.get_int('resize-handle-width');
+            if (this._resizeHandle) {
+                this._resizeHandle.set_width(this._resizeHandleWidth);
+            }
+        });
 
         // Main content box
         this._contentBox = new St.BoxLayout({
@@ -281,12 +315,13 @@ class StageManagerPanel extends St.BoxLayout {
         this._contentBox.add_child(this._scrollView);
         this.add_child(this._contentBox);
 
-        // Resize handle
+        // Resize handle - make it more usable
         this._resizeHandle = new St.Widget({
             style_class: 'stage-manager-resize-handle',
             reactive: true,
             track_hover: true,
-            width: RESIZE_HANDLE_WIDTH,
+            width: this._resizeHandleWidth,
+            x_expand: false,
         });
         this.add_child(this._resizeHandle);
 
@@ -351,6 +386,12 @@ class StageManagerPanel extends St.BoxLayout {
                                                  this._dragStartWidth + deltaX));
                 
                 this.setPanelWidth(newWidth);
+                
+                // Update active window size in real-time during drag
+                if (this._extension && this._extension._active && this._extension._updateLayout) {
+                    this._extension._updateLayout();
+                }
+                
                 return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
@@ -373,9 +414,14 @@ class StageManagerPanel extends St.BoxLayout {
                         this._settings.set_int('panel-width', this._panelWidth);
                     }
                     
-                    // Update the layout
-                    if (this._extension && this._extension._updateLayout) {
-                        this._extension._updateLayout();
+                    // Force final layout update to ensure window is properly positioned
+                    if (this._extension && this._extension._active) {
+                        const focusWindow = global.display.focus_window;
+                        if (focusWindow && !focusWindow.skip_taskbar && 
+                            focusWindow.get_window_type() === Meta.WindowType.NORMAL &&
+                            focusWindow.get_maximized() === 0) {
+                            this._extension._adjustActiveWindow(focusWindow);
+                        }
                     }
                 } catch (e) {
                     log(`Error in button-release: ${e}`);
@@ -433,6 +479,12 @@ class StageManagerPanel extends St.BoxLayout {
 
     destroy() {
         try {
+            // Disconnect settings listener
+            if (this._resizeHandleWidthChangedId) {
+                this._settings.disconnect(this._resizeHandleWidthChangedId);
+                this._resizeHandleWidthChangedId = null;
+            }
+            
             // Disconnect stage handlers
             if (this._stageMotionId) {
                 global.stage.disconnect(this._stageMotionId);
@@ -649,7 +701,7 @@ export default class ObisionExtensionGrid extends Extension {
             
             const panelHeight = this._getDashPanelHeight();
             const normalX = monitor.x;
-            const hiddenX = normalX - this._panel._panelWidth - RESIZE_HANDLE_WIDTH;
+            const hiddenX = normalX - this._panel._panelWidth - this._panel._resizeHandleWidth;
             
             // Start hidden to the left
             this._panel.set_position(hiddenX, monitor.y + panelHeight.top);
@@ -673,7 +725,7 @@ export default class ObisionExtensionGrid extends Extension {
             const monitor = Main.layoutManager.primaryMonitor;
             if (!monitor) return;
             
-            const hiddenX = monitor.x - this._panel._panelWidth - RESIZE_HANDLE_WIDTH;
+            const hiddenX = monitor.x - this._panel._panelWidth - this._panel._resizeHandleWidth;
             
             // Slide out to the left (same animation as maximize)
             this._panel.ease({
@@ -744,7 +796,7 @@ export default class ObisionExtensionGrid extends Extension {
             if (!monitor || !this._panel) return;
             
             // Include resize handle width in total panel width
-            const totalPanelWidth = this._panel._panelWidth + RESIZE_HANDLE_WIDTH;
+            const totalPanelWidth = this._panel._panelWidth + this._panel._resizeHandleWidth;
             
             // Save original frame if not already saved
             if (!this._originalFrames.has(window)) {
