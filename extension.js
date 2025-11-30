@@ -1,11 +1,13 @@
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import St from 'gi://St';
 import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 const DEFAULT_PANEL_WIDTH = 200;
 const MIN_PANEL_WIDTH = 150;
@@ -175,8 +177,8 @@ class WindowThumbnail extends St.Widget {
                 
                 if (this._clickCount === 1) {
                     // Start timer for single click
-                    this._clickTimer = imports.gi.GLib.timeout_add(
-                        imports.gi.GLib.PRIORITY_DEFAULT,
+                    this._clickTimer = GLib.timeout_add(
+                        GLib.PRIORITY_DEFAULT,
                         250, // Double click timeout
                         () => {
                             if (this._clickCount === 1) {
@@ -185,13 +187,13 @@ class WindowThumbnail extends St.Widget {
                             }
                             this._clickCount = 0;
                             this._clickTimer = null;
-                            return imports.gi.GLib.SOURCE_REMOVE;
+                            return GLib.SOURCE_REMOVE;
                         }
                     );
                 } else if (this._clickCount === 2) {
                     // Double click - cancel single click timer
                     if (this._clickTimer) {
-                        imports.gi.GLib.source_remove(this._clickTimer);
+                        GLib.source_remove(this._clickTimer);
                         this._clickTimer = null;
                     }
                     this._handleDoubleClick();
@@ -199,24 +201,154 @@ class WindowThumbnail extends St.Widget {
                 }
                 
                 return Clutter.EVENT_STOP;
+            } else if (event.get_button() === 3) {
+                // Right click - show context menu
+                this._showContextMenu(event);
+                return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
         });
+    }
+    
+    _showContextMenu(event) {
+        // Get the app for this window
+        const app = Shell.WindowTracker.get_default().get_window_app(this._window);
+        if (!app) return;
+        
+        // Create popup menu
+        if (this._menu) {
+            this._menu.destroy();
+            this._menu = null;
+        }
+        
+        this._menu = new PopupMenu.PopupMenu(this, 0.5, St.Side.RIGHT);
+        Main.uiGroup.add_child(this._menu.actor);
+        this._menu.actor.hide();
+        
+        // Add menu items similar to dash
+        this._menu.addAction('Nueva ventana', () => {
+            app.open_new_window(-1);
+        });
+        
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        
+        // Close window option
+        this._menu.addAction('Cerrar', () => {
+            this._window.delete(global.get_current_time());
+        });
+        
+        // Show on all workspaces / only this workspace
+        if (this._window.is_on_all_workspaces()) {
+            this._menu.addAction('Solo en este espacio de trabajo', () => {
+                this._window.unstick();
+            });
+        } else {
+            this._menu.addAction('En todos los espacios de trabajo', () => {
+                this._window.stick();
+            });
+        }
+        
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        
+        // Quit app
+        this._menu.addAction('Salir', () => {
+            app.request_quit();
+        });
+        
+        // Position and open menu
+        const [x, y] = event.get_coords();
+        this._menu.actor.set_position(x, y);
+        this._menu.open();
     }
     
     _handleSingleClick() {
         const focusWindow = global.display.focus_window;
         
         if (this._window === focusWindow) {
-            // Click on active thumbnail - minimize the window
-            this._window.minimize();
+            // Click on active thumbnail - minimize with animation
+            this._minimizeWithAnimation();
         } else {
-            // Click on inactive thumbnail - activate window
+            // Click on inactive thumbnail - activate window with animation
+            this._activateWithAnimation();
+        }
+    }
+    
+    _activateWithAnimation() {
+        try {
+            // Get the current focused window to animate out
+            const currentWindow = global.display.focus_window;
+            if (currentWindow && currentWindow !== this._window) {
+                const currentActor = currentWindow.get_compositor_private();
+                if (currentActor) {
+                    // Slide current window to the right (exit)
+                    const monitor = Main.layoutManager.primaryMonitor;
+                    currentActor.ease({
+                        translation_x: monitor.width,
+                        duration: 200,
+                        mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                        onComplete: () => {
+                            currentActor.translation_x = 0;
+                            currentWindow.minimize();
+                        },
+                    });
+                }
+            }
+            
+            // Unminimize and activate the new window
+            if (this._window.minimized) {
+                this._window.unminimize();
+            }
+            
+            // Prepare entry animation - start from left
+            const newActor = this._window.get_compositor_private();
+            if (newActor) {
+                const monitor = Main.layoutManager.primaryMonitor;
+                newActor.translation_x = -monitor.width;
+                
+                // Slight delay to let the window unminimize
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                    newActor.ease({
+                        translation_x: 0,
+                        duration: 250,
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    });
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+            
+            this._window.activate(global.get_current_time());
+        } catch (e) {
+            // Fallback - just activate
             if (this._window.minimized) {
                 this._window.unminimize();
             }
             this._window.activate(global.get_current_time());
         }
+    }
+    
+    _minimizeWithAnimation() {
+        const actor = this._window.get_compositor_private();
+        if (!actor) {
+            this._window.minimize();
+            return;
+        }
+        
+        const monitor = imports.ui.main.layoutManager.primaryMonitor;
+        if (!monitor) {
+            this._window.minimize();
+            return;
+        }
+        
+        // Slide out to the left
+        actor.ease({
+            translation_x: -actor.width,
+            duration: 200,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            onComplete: () => {
+                actor.translation_x = 0;
+                this._window.minimize();
+            },
+        });
     }
     
     _handleDoubleClick() {
@@ -359,6 +491,14 @@ class WindowThumbnail extends St.Widget {
 
     destroy() {
         try {
+            if (this._menu) {
+                this._menu.destroy();
+                this._menu = null;
+            }
+            if (this._clickTimer) {
+                GLib.source_remove(this._clickTimer);
+                this._clickTimer = null;
+            }
             if (this._closeButton) {
                 this._closeButton = null;
             }
@@ -518,14 +658,22 @@ class StageManagerPanel extends St.BoxLayout {
                     this._dragStartWidth = this._panelWidth;
                     
                     global.display.set_cursor(Meta.Cursor.CROSSHAIR);
-                    
-                    // Grab the pointer to ensure we get all events
-                    this._resizeHandle.grab_key_focus();
                 } catch (e) {
                     log(`Error in button-press: ${e}`);
                     this._dragging = false;
                 }
                 
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        
+        // Also handle button release on the resize handle itself
+        this._resizeHandle.connect('button-release-event', (actor, event) => {
+            if (event.get_button() === 1) {
+                if (this._dragging) {
+                    this._endResize();
+                }
                 return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
@@ -573,12 +721,14 @@ class StageManagerPanel extends St.BoxLayout {
                 this._settings.set_int('panel-width', this._panelWidth);
             }
             
-            // Only now adjust the active window to the new panel size
+            // Restore focus to the window that was active before drag and adjust it
             if (this._extension && this._extension._active && this._focusWindowBeforeDrag) {
                 const focusWindow = this._focusWindowBeforeDrag;
                 if (focusWindow && !focusWindow.skip_taskbar && 
                     focusWindow.get_window_type() === Meta.WindowType.NORMAL &&
                     focusWindow.get_maximized() === 0) {
+                    // Re-activate the window to restore focus
+                    focusWindow.activate(global.get_current_time());
                     this._extension._adjustActiveWindow(focusWindow);
                 }
             }
@@ -612,6 +762,9 @@ class StageManagerPanel extends St.BoxLayout {
             );
 
             const focusWindow = global.display.focus_window;
+            
+            // Get accent color from settings
+            const accentColor = this._getAccentColor();
 
             // Add thumbnails for all windows (including active one)
             windows.forEach(window => {
@@ -620,6 +773,7 @@ class StageManagerPanel extends St.BoxLayout {
                     // Mark active window
                     if (window === focusWindow) {
                         thumbnail.add_style_class_name('stage-manager-thumbnail-active');
+                        thumbnail.add_style_class_name(`accent-${accentColor}`);
                     }
                     this._thumbnailBox.add_child(thumbnail);
                     this._thumbnails.push(thumbnail);
@@ -629,6 +783,22 @@ class StageManagerPanel extends St.BoxLayout {
             });
         } catch (e) {
             log(`Error updating thumbnails: ${e}`);
+        }
+    }
+    
+    _getAccentColor() {
+        try {
+            const settings = new Gio.Settings({ schema: 'org.gnome.desktop.interface' });
+            const accentColor = settings.get_string('accent-color');
+            // Valid accent colors: blue, teal, green, yellow, orange, red, pink, purple, slate
+            const validColors = ['blue', 'teal', 'green', 'yellow', 'orange', 'red', 'pink', 'purple', 'slate'];
+            if (validColors.includes(accentColor)) {
+                return accentColor;
+            }
+            return 'blue'; // Default fallback
+        } catch (e) {
+            log(`Error getting accent color: ${e}`);
+            return 'blue';
         }
     }
 
@@ -729,6 +899,19 @@ export default class ObisionExtensionGrid extends Extension {
         
         // Setup hot edge for showing panel when maximized
         this._setupHotEdge();
+        
+        // Monitor overview (Activities) to hide/show panel
+        this._overviewShowingId = Main.overview.connect('showing', () => {
+            if (this._active && this._panel) {
+                this._panel.hide();
+            }
+        });
+        
+        this._overviewHiddenId = Main.overview.connect('hidden', () => {
+            if (this._active) {
+                this._updateLayout();
+            }
+        });
 
         // Monitor all windows for size changes
         this._windowSizeChangedIds = [];
@@ -808,6 +991,21 @@ export default class ObisionExtensionGrid extends Extension {
                     } catch (e) {}
                 });
                 this._windowDestroyIds = [];
+            }
+            
+            // Disconnect overview signals
+            if (this._overviewShowingId) {
+                try {
+                    Main.overview.disconnect(this._overviewShowingId);
+                } catch (e) {}
+                this._overviewShowingId = null;
+            }
+            
+            if (this._overviewHiddenId) {
+                try {
+                    Main.overview.disconnect(this._overviewHiddenId);
+                } catch (e) {}
+                this._overviewHiddenId = null;
             }
 
             if (this._windowSizeChangedIds) {
@@ -1073,6 +1271,32 @@ export default class ObisionExtensionGrid extends Extension {
             }
             this._windowSizeChangedIds.push({ window: window, id: id });
             
+            // Connect destroy handler for new window
+            this._connectWindowDestroy(window);
+            
+            // If no window is currently focused, activate this new window
+            const focusWindow = global.display.focus_window;
+            if (!focusWindow || focusWindow.skip_taskbar || 
+                focusWindow.get_window_type() !== Meta.WindowType.NORMAL) {
+                // Delay activation to let window initialize
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                    try {
+                        if (window && !window.minimized) {
+                            window.activate(global.get_current_time());
+                        }
+                    } catch (e) {}
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+            
+            // Scroll to top when new window is added
+            if (this._panel && this._panel._scrollView) {
+                const vscroll = this._panel._scrollView.get_vscroll_bar();
+                if (vscroll) {
+                    vscroll.get_adjustment().set_value(0);
+                }
+            }
+            
             this._updateLayout();
         }
     }
@@ -1146,26 +1370,73 @@ export default class ObisionExtensionGrid extends Extension {
             this._windowDestroyIds = this._windowDestroyIds.filter(item => item.window !== closedWindow);
         }
         
-        // Force update thumbnails immediately
-        if (this._panel) {
-            this._panel.updateThumbnails();
-        }
-        
-        // Activate the previous window in history
-        if (this._windowHistory.length > 0) {
-            const previousWindow = this._windowHistory[this._windowHistory.length - 1];
-            try {
-                if (previousWindow.minimized) {
-                    previousWindow.unminimize();
+        // Delay to let GNOME process the window close
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+            if (!this._active) return GLib.SOURCE_REMOVE;
+            
+            // Force update thumbnails
+            if (this._panel) {
+                this._panel.updateThumbnails();
+                
+                // Scroll to top
+                if (this._panel._scrollView) {
+                    const vscroll = this._panel._scrollView.get_vscroll_bar();
+                    if (vscroll) {
+                        vscroll.get_adjustment().set_value(0);
+                    }
                 }
-                previousWindow.activate(global.get_current_time());
-            } catch (e) {
-                // Window may have been destroyed
             }
-        } else {
-            // No more windows - hide panel
-            this._hidePanelAnimated();
-        }
+            
+            // Check remaining windows
+            const workspace = global.workspace_manager.get_active_workspace();
+            if (!workspace) return GLib.SOURCE_REMOVE;
+            
+            const windows = workspace.list_windows().filter(w =>
+                w && !w.skip_taskbar && w.get_window_type() === Meta.WindowType.NORMAL
+            );
+            
+            if (windows.length === 0) {
+                // No more windows - hide panel
+                this._hidePanelAnimated();
+                return GLib.SOURCE_REMOVE;
+            }
+            
+            // Activate the previous window in history
+            if (this._windowHistory.length > 0) {
+                const previousWindow = this._windowHistory[this._windowHistory.length - 1];
+                try {
+                    // Verify window still exists
+                    if (windows.includes(previousWindow)) {
+                        if (previousWindow.minimized) {
+                            previousWindow.unminimize();
+                        }
+                        previousWindow.activate(global.get_current_time());
+                    } else {
+                        // Window in history no longer exists, activate the first available
+                        const firstWindow = windows[0];
+                        if (firstWindow.minimized) {
+                            firstWindow.unminimize();
+                        }
+                        firstWindow.activate(global.get_current_time());
+                    }
+                } catch (e) {
+                    log(`Error activating previous window: ${e}`);
+                }
+            } else if (windows.length > 0) {
+                // No history but have windows - activate first
+                const firstWindow = windows[0];
+                try {
+                    if (firstWindow.minimized) {
+                        firstWindow.unminimize();
+                    }
+                    firstWindow.activate(global.get_current_time());
+                } catch (e) {
+                    log(`Error activating first window: ${e}`);
+                }
+            }
+            
+            return GLib.SOURCE_REMOVE;
+        });
     }
     
     _setupHotEdge() {

@@ -112,17 +112,89 @@
     border-color: rgba(120, 120, 130, 1.0);
 }
 
-/* Close button blue border when thumbnail is active */
+/* Close button accent border when thumbnail is active - uses CSS variable */
 .stage-manager-thumbnail-active .stage-manager-close-button {
     border-color: rgba(53, 132, 228, 1.0);
 }
 
-/* Active thumbnail - close button hover stays blue (higher specificity) */
+/* Active thumbnail - close button hover stays accent (higher specificity) */
 .stage-manager-thumbnail-active .stage-manager-close-button:hover,
 .stage-manager-thumbnail-active:hover .stage-manager-close-button,
 .stage-manager-thumbnail-active:hover .stage-manager-close-button:hover {
     background-color: rgba(80, 80, 90, 1.0);
     border-color: rgba(53, 132, 228, 1.0);
+}
+
+/* Accent color variants for close button - Blue (default) */
+.stage-manager-thumbnail-active.accent-blue .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-blue .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-blue:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-blue:hover .stage-manager-close-button:hover {
+    border-color: rgba(53, 132, 228, 1.0);
+}
+
+/* Teal accent */
+.stage-manager-thumbnail-active.accent-teal .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-teal .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-teal:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-teal:hover .stage-manager-close-button:hover {
+    border-color: rgba(33, 150, 141, 1.0);
+}
+
+/* Green accent */
+.stage-manager-thumbnail-active.accent-green .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-green .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-green:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-green:hover .stage-manager-close-button:hover {
+    border-color: rgba(46, 160, 67, 1.0);
+}
+
+/* Yellow accent */
+.stage-manager-thumbnail-active.accent-yellow .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-yellow .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-yellow:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-yellow:hover .stage-manager-close-button:hover {
+    border-color: rgba(227, 170, 0, 1.0);
+}
+
+/* Orange accent */
+.stage-manager-thumbnail-active.accent-orange .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-orange .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-orange:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-orange:hover .stage-manager-close-button:hover {
+    border-color: rgba(230, 126, 34, 1.0);
+}
+
+/* Red accent */
+.stage-manager-thumbnail-active.accent-red .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-red .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-red:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-red:hover .stage-manager-close-button:hover {
+    border-color: rgba(224, 81, 81, 1.0);
+}
+
+/* Pink accent */
+.stage-manager-thumbnail-active.accent-pink .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-pink .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-pink:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-pink:hover .stage-manager-close-button:hover {
+    border-color: rgba(213, 97, 166, 1.0);
+}
+
+/* Purple accent */
+.stage-manager-thumbnail-active.accent-purple .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-purple .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-purple:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-purple:hover .stage-manager-close-button:hover {
+    border-color: rgba(145, 71, 255, 1.0);
+}
+
+/* Slate accent */
+.stage-manager-thumbnail-active.accent-slate .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-slate .stage-manager-close-button:hover,
+.stage-manager-thumbnail-active.accent-slate:hover .stage-manager-close-button,
+.stage-manager-thumbnail-active.accent-slate:hover .stage-manager-close-button:hover {
+    border-color: rgba(98, 111, 128, 1.0);
 }
 
 .stage-manager-close-icon {
@@ -158,7 +230,7 @@
     max-width: 120px;
 }
 
-/* Active Window Indicator */
+/* Active Window Indicator - Blue (default) */
 .stage-manager-thumbnail-active .stage-manager-screenshot-panel {
     border: 3px solid rgba(53, 132, 228, 1.0);
     background-color: rgba(53, 132, 228, 0.1);
@@ -174,6 +246,141 @@
 .stage-manager-thumbnail-active:hover .stage-manager-thumbnail-bottom-panel {
     border-color: rgba(53, 132, 228, 1.0);
     background-color: rgba(53, 132, 228, 0.15);
+}
+
+/* Accent color variants for thumbnail border - Blue (default) */
+.stage-manager-thumbnail-active.accent-blue .stage-manager-screenshot-panel {
+    border-color: rgba(53, 132, 228, 1.0);
+    background-color: rgba(53, 132, 228, 0.1);
+}
+.stage-manager-thumbnail-active.accent-blue .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(53, 132, 228, 1.0);
+    background-color: rgba(53, 132, 228, 0.1);
+}
+.stage-manager-thumbnail-active.accent-blue:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-blue:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(53, 132, 228, 1.0);
+    background-color: rgba(53, 132, 228, 0.15);
+}
+
+/* Teal accent */
+.stage-manager-thumbnail-active.accent-teal .stage-manager-screenshot-panel {
+    border-color: rgba(33, 150, 141, 1.0);
+    background-color: rgba(33, 150, 141, 0.1);
+}
+.stage-manager-thumbnail-active.accent-teal .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(33, 150, 141, 1.0);
+    background-color: rgba(33, 150, 141, 0.1);
+}
+.stage-manager-thumbnail-active.accent-teal:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-teal:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(33, 150, 141, 1.0);
+    background-color: rgba(33, 150, 141, 0.15);
+}
+
+/* Green accent */
+.stage-manager-thumbnail-active.accent-green .stage-manager-screenshot-panel {
+    border-color: rgba(46, 160, 67, 1.0);
+    background-color: rgba(46, 160, 67, 0.1);
+}
+.stage-manager-thumbnail-active.accent-green .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(46, 160, 67, 1.0);
+    background-color: rgba(46, 160, 67, 0.1);
+}
+.stage-manager-thumbnail-active.accent-green:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-green:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(46, 160, 67, 1.0);
+    background-color: rgba(46, 160, 67, 0.15);
+}
+
+/* Yellow accent */
+.stage-manager-thumbnail-active.accent-yellow .stage-manager-screenshot-panel {
+    border-color: rgba(227, 170, 0, 1.0);
+    background-color: rgba(227, 170, 0, 0.1);
+}
+.stage-manager-thumbnail-active.accent-yellow .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(227, 170, 0, 1.0);
+    background-color: rgba(227, 170, 0, 0.1);
+}
+.stage-manager-thumbnail-active.accent-yellow:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-yellow:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(227, 170, 0, 1.0);
+    background-color: rgba(227, 170, 0, 0.15);
+}
+
+/* Orange accent */
+.stage-manager-thumbnail-active.accent-orange .stage-manager-screenshot-panel {
+    border-color: rgba(230, 126, 34, 1.0);
+    background-color: rgba(230, 126, 34, 0.1);
+}
+.stage-manager-thumbnail-active.accent-orange .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(230, 126, 34, 1.0);
+    background-color: rgba(230, 126, 34, 0.1);
+}
+.stage-manager-thumbnail-active.accent-orange:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-orange:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(230, 126, 34, 1.0);
+    background-color: rgba(230, 126, 34, 0.15);
+}
+
+/* Red accent */
+.stage-manager-thumbnail-active.accent-red .stage-manager-screenshot-panel {
+    border-color: rgba(224, 81, 81, 1.0);
+    background-color: rgba(224, 81, 81, 0.1);
+}
+.stage-manager-thumbnail-active.accent-red .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(224, 81, 81, 1.0);
+    background-color: rgba(224, 81, 81, 0.1);
+}
+.stage-manager-thumbnail-active.accent-red:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-red:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(224, 81, 81, 1.0);
+    background-color: rgba(224, 81, 81, 0.15);
+}
+
+/* Pink accent */
+.stage-manager-thumbnail-active.accent-pink .stage-manager-screenshot-panel {
+    border-color: rgba(213, 97, 166, 1.0);
+    background-color: rgba(213, 97, 166, 0.1);
+}
+.stage-manager-thumbnail-active.accent-pink .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(213, 97, 166, 1.0);
+    background-color: rgba(213, 97, 166, 0.1);
+}
+.stage-manager-thumbnail-active.accent-pink:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-pink:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(213, 97, 166, 1.0);
+    background-color: rgba(213, 97, 166, 0.15);
+}
+
+/* Purple accent */
+.stage-manager-thumbnail-active.accent-purple .stage-manager-screenshot-panel {
+    border-color: rgba(145, 71, 255, 1.0);
+    background-color: rgba(145, 71, 255, 0.1);
+}
+.stage-manager-thumbnail-active.accent-purple .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(145, 71, 255, 1.0);
+    background-color: rgba(145, 71, 255, 0.1);
+}
+.stage-manager-thumbnail-active.accent-purple:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-purple:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(145, 71, 255, 1.0);
+    background-color: rgba(145, 71, 255, 0.15);
+}
+
+/* Slate accent */
+.stage-manager-thumbnail-active.accent-slate .stage-manager-screenshot-panel {
+    border-color: rgba(98, 111, 128, 1.0);
+    background-color: rgba(98, 111, 128, 0.1);
+}
+.stage-manager-thumbnail-active.accent-slate .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(98, 111, 128, 1.0);
+    background-color: rgba(98, 111, 128, 0.1);
+}
+.stage-manager-thumbnail-active.accent-slate:hover .stage-manager-screenshot-panel,
+.stage-manager-thumbnail-active.accent-slate:hover .stage-manager-thumbnail-bottom-panel {
+    border-color: rgba(98, 111, 128, 1.0);
+    background-color: rgba(98, 111, 128, 0.15);
 }
 
 /* Empty State */
