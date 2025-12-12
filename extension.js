@@ -201,101 +201,9 @@ const WindowThumbnail = GObject.registerClass(
                     }
 
                     return Clutter.EVENT_STOP;
-                } else if (event.get_button() === 3) {
-                    // Right click - show context menu
-                    this._showContextMenu(event);
-                    return Clutter.EVENT_STOP;
                 }
                 return Clutter.EVENT_PROPAGATE;
             });
-        }
-
-        _showContextMenu(event) {
-            // Get the app for this window
-            const app = Shell.WindowTracker.get_default().get_window_app(this._window);
-            if (!app) return;
-
-            // Close any existing menu
-            if (this._menu) {
-                this._menu.close(false);
-                this._menu.destroy();
-                this._menu = null;
-            }
-
-            this._menu = new PopupMenu.PopupMenu(this, 0.5, St.Side.RIGHT);
-            Main.uiGroup.add_child(this._menu.actor);
-            this._menu.actor.hide();
-
-            // Add menu items similar to dash
-            this._menu.addAction('Nueva ventana', () => {
-                app.open_new_window(-1);
-            });
-
-            this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-            // Close window option
-            this._menu.addAction('Cerrar', () => {
-                this._window.delete(global.get_current_time());
-            });
-
-            // Show on all workspaces / only this workspace
-            if (this._window.is_on_all_workspaces()) {
-                this._menu.addAction('Solo en este espacio de trabajo', () => {
-                    this._window.unstick();
-                });
-            } else {
-                this._menu.addAction('En todos los espacios de trabajo', () => {
-                    this._window.stick();
-                });
-            }
-
-            this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-            // Quit app
-            this._menu.addAction('Salir', () => {
-                app.request_quit();
-            });
-
-            // Close menu when it loses focus or on outside click
-            this._menu.connect('open-state-changed', (menu, open) => {
-                if (!open && this._menu) {
-                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
-                        if (this._menu) {
-                            this._menu.destroy();
-                            this._menu = null;
-                        }
-                        return GLib.SOURCE_REMOVE;
-                    });
-                }
-            });
-
-            // Capture clicks outside the menu to close it
-            this._menuCaptureId = global.stage.connect('captured-event', (actor, capturedEvent) => {
-                if (capturedEvent.type() === Clutter.EventType.BUTTON_PRESS) {
-                    // Check if click is outside the menu
-                    const [stageX, stageY] = capturedEvent.get_coords();
-                    const menuActor = this._menu.actor;
-                    if (menuActor && menuActor.visible) {
-                        const [menuX, menuY] = menuActor.get_transformed_position();
-                        const menuWidth = menuActor.width;
-                        const menuHeight = menuActor.height;
-
-                        const isOutside = stageX < menuX || stageX > menuX + menuWidth ||
-                            stageY < menuY || stageY > menuY + menuHeight;
-
-                        if (isOutside && this._menu) {
-                            this._menu.close(false);
-                            return Clutter.EVENT_STOP;
-                        }
-                    }
-                }
-                return Clutter.EVENT_PROPAGATE;
-            });
-
-            // Position and open menu
-            const [x, y] = event.get_coords();
-            this._menu.actor.set_position(x, y);
-            this._menu.open();
         }
 
         _handleSingleClick() {
@@ -511,15 +419,6 @@ const WindowThumbnail = GObject.registerClass(
 
         destroy() {
             try {
-                if (this._menuCaptureId) {
-                    global.stage.disconnect(this._menuCaptureId);
-                    this._menuCaptureId = null;
-                }
-                if (this._menu) {
-                    this._menu.close(false);
-                    this._menu.destroy();
-                    this._menu = null;
-                }
                 if (this._clickTimer) {
                     GLib.source_remove(this._clickTimer);
                     this._clickTimer = null;
@@ -729,10 +628,7 @@ const StageManagerPanel = GObject.registerClass(
             this._scrollView.add_child(this._thumbnailBox);
             this._contentContainer.add_child(this._scrollView);
 
-            // Add content container to panel
-            this.add_child(this._contentContainer);
-
-            // Resize handle - inside the panel, aligned to the right edge
+            // Resize handle - position depends on panel position
             this._resizeHandle = new St.BoxLayout({
                 style_class: 'stage-manager-resize-handle',
                 vertical: true,
@@ -763,6 +659,9 @@ const StageManagerPanel = GObject.registerClass(
             }
 
             this._resizeHandle.add_child(gripContainer);
+
+            // Add content container and resize handle to panel
+            this.add_child(this._contentContainer);
             this.add_child(this._resizeHandle);
 
             // Resize functionality
@@ -831,6 +730,25 @@ const StageManagerPanel = GObject.registerClass(
                     try {
                         // Store reference to current focus window before drag
                         this._focusWindowBeforeDrag = global.display.focus_window;
+                        this._wasWindowActive = false;
+
+                        // Disable layout updates during resize
+                        if (this._extension) {
+                            this._extension._resizingPanel = true;
+                        }
+
+                        // Hide active window before starting drag if it exists and is valid
+                        if (this._focusWindowBeforeDrag &&
+                            !this._focusWindowBeforeDrag.skip_taskbar &&
+                            this._focusWindowBeforeDrag.get_window_type() === Meta.WindowType.NORMAL &&
+                            this._focusWindowBeforeDrag.get_maximized() === 0) {
+
+                            this._wasWindowActive = true;
+                            this._focusWindowBeforeDrag.minimize();
+                            log(`Window minimized during resize start: ${this._focusWindowBeforeDrag.get_title()}`);
+                        } else {
+                            log('No valid window to minimize');
+                        }
 
                         this._dragging = true;
                         [this._dragStartX] = event.get_coords();
@@ -901,19 +819,48 @@ const StageManagerPanel = GObject.registerClass(
                 }
 
                 // Restore focus to the window that was active before drag and adjust it
-                if (this._extension && this._extension._active && this._focusWindowBeforeDrag) {
+                if (this._extension && this._extension._active && this._wasWindowActive && this._focusWindowBeforeDrag) {
                     const focusWindow = this._focusWindowBeforeDrag;
                     if (focusWindow && !focusWindow.skip_taskbar &&
                         focusWindow.get_window_type() === Meta.WindowType.NORMAL &&
                         focusWindow.get_maximized() === 0) {
-                        // Re-activate the window to restore focus
-                        this._activateWindow(focusWindow);
-                        this._extension._adjustActiveWindow(focusWindow);
+                        // Unminimize the window
+                        focusWindow.unminimize();
+                        log('Window unminimized after resize end');
+
+                        // Small delay to ensure window is ready
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                            // Re-activate the window to restore focus
+                            this._extension._activateWindow(focusWindow);
+                            // Recalculate window size with new panel width
+                            this._extension._adjustActiveWindow(focusWindow);
+                            // Re-enable layout updates
+                            if (this._extension) {
+                                this._extension._resizingPanel = false;
+                            }
+                            log('Window restored and resized');
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    } else {
+                        // Re-enable layout updates even if no window to restore
+                        if (this._extension) {
+                            this._extension._resizingPanel = false;
+                        }
+                    }
+                } else {
+                    // Re-enable layout updates
+                    if (this._extension) {
+                        this._extension._resizingPanel = false;
                     }
                 }
                 this._focusWindowBeforeDrag = null;
+                this._wasWindowActive = false;
             } catch (e) {
                 log(`Error in end resize: ${e}`);
+                // Re-enable layout updates on error
+                if (this._extension) {
+                    this._extension._resizingPanel = false;
+                }
             }
         }
 
@@ -1425,6 +1372,15 @@ export default class ObisionExtensionGrid extends Extension {
                 this._monitorsChangedId = null;
             }
 
+            if (this._panelPositionChangedId) {
+                try {
+                    this._settings.disconnect(this._panelPositionChangedId);
+                } catch (e) {
+                    log(`Error disconnecting panel-position-changed: ${e}`);
+                }
+                this._panelPositionChangedId = null;
+            }
+
             // Destroy panel
             if (this._panel) {
                 try {
@@ -1526,7 +1482,7 @@ export default class ObisionExtensionGrid extends Extension {
 
             const panelHeight = this._getDashPanelHeight();
 
-            // Position panel below top dash/panel
+            // Position panel on the left below top dash/panel
             this._panel.set_position(monitor.x, monitor.y + panelHeight.top);
             // Adjust height to fit between top and bottom panels
             this._panel.set_height(monitor.height - panelHeight.top - panelHeight.bottom);
@@ -1544,13 +1500,13 @@ export default class ObisionExtensionGrid extends Extension {
 
             const panelHeight = this._getDashPanelHeight();
             const normalX = monitor.x;
-            const hiddenX = normalX - this._panel._panelWidth;
+            const hiddenX = monitor.x - this._panel._panelWidth;
 
             // Start hidden to the left
             this._panel.set_position(hiddenX, monitor.y + panelHeight.top);
             this._panel.show();
 
-            // Slide in from left (same animation as unmaximize)
+            // Slide in from left
             this._panel.ease({
                 x: normalX,
                 duration: 250,
@@ -1578,7 +1534,7 @@ export default class ObisionExtensionGrid extends Extension {
                 focusWindow.maximize(Meta.MaximizeFlags.BOTH);
             }
 
-            // Slide out to the left (same animation as maximize)
+            // Slide out to the left
             this._panel.ease({
                 x: hiddenX,
                 duration: 250,
@@ -1596,6 +1552,9 @@ export default class ObisionExtensionGrid extends Extension {
 
     _updateLayout() {
         if (!this._active) return;
+
+        // Skip layout updates during panel resize
+        if (this._resizingPanel) return;
 
         try {
             const workspace = global.workspace_manager.get_active_workspace();
@@ -1643,10 +1602,29 @@ export default class ObisionExtensionGrid extends Extension {
             // Don't minimize if header menu is open (it can steal focus temporarily)
             const isHeaderMenuOpen = this._panel?._headerMenu !== null && this._panel?._headerMenu !== undefined;
 
-            if (!isHeaderMenuOpen) {
+            // Don't minimize if preferences window is open (to allow dialogs)
+            const prefsWindow = this._findPreferencesWindow();
+            const isPrefsOpen = prefsWindow !== null && prefsWindow !== undefined;
+
+            // Check if focus window is a dialog/modal and get its transient parent
+            let parentOfDialog = null;
+            if (focusWindow) {
+                const windowType = focusWindow.get_window_type();
+                // If focus is on a dialog, modal, or utility window, find its parent
+                if (windowType === Meta.WindowType.DIALOG ||
+                    windowType === Meta.WindowType.MODAL_DIALOG ||
+                    windowType === Meta.WindowType.UTILITY) {
+                    parentOfDialog = focusWindow.get_transient_for();
+                }
+            }
+
+            if (!isHeaderMenuOpen && !isPrefsOpen) {
                 windows.forEach(window => {
                     try {
-                        if (window !== focusWindow) {
+                        // Don't minimize if:
+                        // 1. It's the focus window
+                        // 2. It's the parent of the focused dialog
+                        if (window !== focusWindow && window !== parentOfDialog) {
                             // Keep them on workspace but not visible in main area
                             window.minimize();
                         }

@@ -9,28 +9,10 @@
       <description>Width of the side panel in pixels (auto-calculated thumbnail height)</description>
     </key>
 
-    <key name="panel-position" type="s">
-      <default>"left"</default>
-      <summary>Panel Position</summary>
-      <description>Position of the window panel (left or right)</description>
-    </key>
-
-    <key name="auto-minimize" type="b">
-      <default>true</default>
-      <summary>Minimize Inactive Windows</summary>
-      <description>Automatically minimize windows not shown in the panel</description>
-    </key>
-
-    <key name="show-app-names" type="b">
-      <default>true</default>
-      <summary>Show Application Names</summary>
-      <description>Display application names below thumbnails</description>
-    </key>
-
     <key name="toggle-grid" type="as">
       <default>['&lt;Super&gt;g']</default>
-      <summary>Toggle Grid Overlay</summary>
-      <description>Keyboard shortcut to show/hide the grid overlay</description>
+      <summary>Toggle One UI</summary>
+      <description>Keyboard shortcut to show/hide the One UI panel</description>
     </key>
 
     <key name="open-preferences" type="as">

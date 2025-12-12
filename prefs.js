@@ -14,88 +14,48 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         });
         window.add(page);
 
-        // Display Options Group
-        const displayGroup = new Adw.PreferencesGroup({
-            title: 'Display Options',
-            description: 'Configure how the grid is displayed',
-        });
-        page.add(displayGroup);
-
-        // Panel Position
-        const panelPositionRow = new Adw.ComboRow({
-            title: 'Panel Position',
-            subtitle: 'Position of the window panel',
-        });
-        const positionModel = new Gtk.StringList();
-        positionModel.append('Left');
-        positionModel.append('Right');
-        panelPositionRow.set_model(positionModel);
-        panelPositionRow.set_selected(settings.get_string('panel-position') === 'left' ? 0 : 1);
-        panelPositionRow.connect('notify::selected', () => {
-            settings.set_string('panel-position', panelPositionRow.get_selected() === 0 ? 'left' : 'right');
-        });
-        displayGroup.add(panelPositionRow);
-
-        // Auto-hide Inactive Windows
-        const autoHideRow = new Adw.SwitchRow({
-            title: 'Minimize Inactive Windows',
-            subtitle: 'Automatically minimize windows not shown in the panel',
-        });
-        displayGroup.add(autoHideRow);
-        settings.bind(
-            'auto-minimize',
-            autoHideRow,
-            'active',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-
-        // Show App Names
-        const showAppNamesRow = new Adw.SwitchRow({
-            title: 'Show Application Names',
-            subtitle: 'Display app names below thumbnails',
-        });
-        displayGroup.add(showAppNamesRow);
-        settings.bind(
-            'show-app-names',
-            showAppNamesRow,
-            'active',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-
-        // Keyboard Shortcuts Group
+        // Keyboard Shortcut Group
         const shortcutsGroup = new Adw.PreferencesGroup({
-            title: 'Keyboard Shortcuts',
-            description: 'Configure keyboard shortcuts',
+            title: 'Keyboard Shortcut',
+            description: 'Configure keyboard shortcut',
         });
         page.add(shortcutsGroup);
 
-        // Toggle Stage Manager Shortcut
+        // Toggle One UI Shortcut
         const getShortcutText = () => {
             try {
                 const shortcuts = settings.get_strv('toggle-grid');
-                return (shortcuts && shortcuts.length > 0) ? shortcuts[0] : '<Super>g';
+                const rawShortcut = (shortcuts && shortcuts.length > 0) ? shortcuts[0] : '<Super>g';
+                return this._formatShortcut(rawShortcut);
             } catch (e) {
-                return '<Super>g';
+                return this._formatShortcut('<Super>g');
             }
         };
-        
+
         const shortcutRow = new Adw.ActionRow({
-            title: 'Toggle Stage Manager',
-            subtitle: getShortcutText(),
+            title: 'Toggle One UI',
+            subtitle: 'Show or hide the window manager panel',
         });
-        
+
+        const shortcutLabel = new Gtk.Label({
+            label: getShortcutText(),
+            valign: Gtk.Align.CENTER,
+        });
+        shortcutLabel.add_css_class('dim-label');
+        shortcutRow.add_suffix(shortcutLabel);
+
         const shortcutButton = new Gtk.Button({
-            label: 'Set Shortcut',
+            label: 'Set',
             valign: Gtk.Align.CENTER,
         });
         shortcutButton.connect('clicked', () => {
-            this._showShortcutDialog(window, settings, shortcutRow);
+            this._showShortcutDialog(window, settings, shortcutRow, shortcutLabel);
         });
         shortcutRow.add_suffix(shortcutButton);
         shortcutsGroup.add(shortcutRow);
     }
 
-    _showShortcutDialog(window, settings, row) {
+    _showShortcutDialog(window, settings, row, label) {
         const dialog = new Adw.MessageDialog({
             heading: 'Set Keyboard Shortcut',
             body: 'Press the key combination you want to use',
@@ -110,13 +70,13 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         const controller = new Gtk.EventControllerKey();
         controller.connect('key-pressed', (controller, keyval, keycode, state) => {
             const mask = state & Gtk.accelerator_get_default_mod_mask();
-            
+
             if (keyval && mask) {
                 try {
                     const shortcut = Gtk.accelerator_name(keyval, mask);
                     if (shortcut) {
                         settings.set_strv('toggle-grid', [shortcut]);
-                        row.subtitle = shortcut;
+                        label.set_label(this._formatShortcut(shortcut));
                         dialog.close();
                         return true;
                     }
@@ -132,7 +92,7 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
             if (response === 'clear') {
                 try {
                     settings.set_strv('toggle-grid', ['<Super>g']);
-                    row.subtitle = '<Super>g';
+                    label.set_label(this._formatShortcut('<Super>g'));
                 } catch (e) {
                     log(`Error setting shortcut: ${e}`);
                 }
@@ -141,5 +101,30 @@ export default class ObisionExtensionGridPreferences extends ExtensionPreference
         });
 
         dialog.present();
+    }
+
+    _formatShortcut(shortcut) {
+        // GTK format is like: <Super>g, <Primary><Shift>t, etc.
+        // We want: Super+G, Ctrl+Shift+T, etc.
+
+        // Split by < and > to get individual parts
+        const parts = shortcut.split(/[<>]/).filter(part => part.length > 0);
+
+        // Process each part
+        const formatted = parts.map(part => {
+            // Replace Primary with Ctrl
+            if (part === 'Primary') {
+                return 'Ctrl';
+            }
+            // Capitalize single letter keys
+            if (part.length === 1) {
+                return part.toUpperCase();
+            }
+            // Keep modifiers as-is (Super, Shift, Alt, etc.)
+            return part;
+        });
+
+        // Join with +
+        return formatted.join('+');
     }
 }
