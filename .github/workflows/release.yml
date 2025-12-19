@@ -26,11 +26,11 @@ jobs:
       run: |
         dpkg-buildpackage -us -uc -b
         mkdir -p builddir
-        mv ../gnome-shell-extension-obision-one-win_*.deb builddir/obision-extension-one-win.deb
+        mv ../gnome-shell-ext-obision-one-win_*.deb builddir/obision-ext-one-win.deb
         
     - name: Verify DEB exists
       run: |
-        if [ ! -f builddir/obision-extension-one-win.deb ]; then
+        if [ ! -f builddir/obision-ext-one-win.deb ]; then
           echo "ERROR: DEB file not found!"
           echo "Contents of builddir:"
           ls -la builddir/ || echo "builddir not found"
@@ -39,12 +39,12 @@ jobs:
           exit 1
         fi
         echo "✅ DEB file found:"
-        ls -lh builddir/obision-extension-one-win.deb
+        ls -lh builddir/obision-ext-one-win.deb
       
     - name: Create Release and Upload DEB
       uses: softprops/action-gh-release@v1
       with:
-        files: builddir/obision-extension-one-win.deb
+        files: builddir/obision-ext-one-win.deb
         generate_release_notes: true
         body: |
           ## Installation
@@ -52,7 +52,7 @@ jobs:
           Download the `.deb` file and install it:
           
           ```bash
-          sudo dpkg -i obision-extension-one-win.deb
+          sudo dpkg -i obision-ext-one-win.deb
           sudo apt-get install -f
           ```
           
@@ -62,7 +62,7 @@ jobs:
           
           Enable the extension:
           ```bash
-          gnome-extensions enable obision-extension-one-win@obision.com
+          gnome-extensions enable obision-ext-one-win@obision.com
           ```
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

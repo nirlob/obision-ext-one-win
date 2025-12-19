@@ -1149,7 +1149,7 @@ const StageManagerPanel = GObject.registerClass(
         }
     });
 
-export default class ObisionExtensionGrid extends Extension {
+export default class ObisionExtGrid extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._active = false;
@@ -1422,7 +1422,7 @@ export default class ObisionExtensionGrid extends Extension {
             const wmClass = w.get_wm_class() || '';
             // Preferences window typically has "Preferences" in title or is the extension prefs
             return title.includes('Preferences') ||
-                title.includes('obision-extension-one-win') ||
+                title.includes('obision-ext-one-win') ||
                 wmClass.includes('org.gnome.Shell.Extensions');
         });
     }

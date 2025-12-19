@@ -1,14 +1,14 @@
-Source: obision-extension-one-win
+Source: obision-ext-one-win
 Section: gnome
 Priority: optional
 Maintainer: Jose Francisco Gonzalez <jfgs1609@gmail.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.0
-Homepage: https://github.com/nirlob/obision-extension-one-win
-Vcs-Git: https://github.com/nirlob/obision-extension-one-win.git
-Vcs-Browser: https://github.com/nirlob/obision-extension-one-win
+Homepage: https://github.com/nirlob/obision-ext-one-win
+Vcs-Git: https://github.com/nirlob/obision-ext-one-win.git
+Vcs-Browser: https://github.com/nirlob/obision-ext-one-win
 
-Package: gnome-shell-extension-obision-one-win
+Package: gnome-shell-ext-obision-one-win
 Architecture: all
 Depends: ${misc:Depends},
          gnome-shell (>= 48)

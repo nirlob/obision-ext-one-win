@@ -20,10 +20,10 @@ A Stage Manager-style window management extension for GNOME Shell with live thum
 
 ### From DEB Package (Recommended)
 
-Download the latest `.deb` package from [GitHub Releases](https://github.com/nirlob/obision-extension-one-win/releases) and install:
+Download the latest `.deb` package from [GitHub Releases](https://github.com/nirlob/obision-ext-one-win/releases) and install:
 
 ```bash
-sudo dpkg -i obision-extension-one-win.deb
+sudo dpkg -i obision-ext-one-win.deb
 sudo apt-get install -f
 ```
 
@@ -33,15 +33,15 @@ Then restart GNOME Shell:
 
 Enable the extension:
 ```bash
-gnome-extensions enable obision-extension-one-win@obision.com
+gnome-extensions enable obision-ext-one-win@obision.com
 ```
 
 ### From Source
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/nirlob/obision-extension-one-win.git
-   cd obision-extension-one-win
+   git clone https://github.com/nirlob/obision-ext-one-win.git
+   cd obision-ext-one-win
    ```
 
 2. Install dependencies:
@@ -57,7 +57,7 @@ gnome-extensions enable obision-extension-one-win@obision.com
 
 4. Enable the extension:
    ```bash
-   gnome-extensions enable obision-extension-one-win@obision.com
+   gnome-extensions enable obision-ext-one-win@obision.com
    ```
 
 5. Restart GNOME Shell:
@@ -69,13 +69,13 @@ gnome-extensions enable obision-extension-one-win@obision.com
 ### Project Structure
 
 ```
-obision-extension-one-win/
+obision-ext-one-win/
 ├── extension.js            # Main extension code with GObject classes
 ├── prefs.js                # Preferences UI with Adwaita widgets
 ├── stylesheet.css          # Theme-aware styles
 ├── metadata.json           # Extension metadata
 ├── schemas/                # GSettings schemas
-│   └── com.obision.extension-one-win.gschema.xml
+│   └── com.obision.ext.one-win.gschema.xml
 ├── debian/                 # Debian packaging files
 │   ├── control
 │   ├── rules
@@ -145,8 +145,8 @@ npm run reload
 
 Or manually:
 ```bash
-gnome-extensions disable obision-extension-one-win@obision.com
-gnome-extensions enable obision-extension-one-win@obision.com
+gnome-extensions disable obision-ext-one-win@obision.com
+gnome-extensions enable obision-ext-one-win@obision.com
 ```
 
 View logs in real-time:
@@ -172,7 +172,7 @@ This will:
 
 Open the extension preferences:
 ```bash
-gnome-extensions prefs obision-extension-one-win@obision.com
+gnome-extensions prefs obision-ext-one-win@obision.com
 ```
 
 Available settings:
@@ -259,4 +259,4 @@ GPL-3.0
 
 ## Support
 
-For issues and feature requests, please use the [GitHub issue tracker](https://github.com/nirlob/obision-extension-one-win/issues).
+For issues and feature requests, please use the [GitHub issue tracker](https://github.com/nirlob/obision-ext-one-win/issues).

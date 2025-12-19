@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: obision-extension-one-win
+Upstream-Name: obision-ext-one-win
 Upstream-Contact: Jose Francisco Gonzalez <jfgs1609@gmail.com>
-Source: https://github.com/nirlob/obision-extension-one-win
+Source: https://github.com/nirlob/obision-ext-one-win
 
 Files: *
 Copyright: 2025 Jose Francisco Gonzalez <jfgs1609@gmail.com>

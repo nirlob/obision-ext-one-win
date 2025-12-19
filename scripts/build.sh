@@ -15,4 +15,4 @@ gnome-extensions pack --force \
     --extra-source=src/
 
 echo "Build complete! Extension package created."
-echo "To install, run: gnome-extensions install --force obision-extension-one-win@obision.com.shell-extension.zip"
+echo "To install, run: gnome-extensions install --force obision-ext-one-win@obision.com.shell-extension.zip"

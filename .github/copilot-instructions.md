@@ -5,10 +5,10 @@ A Stage Manager-style window management extension for GNOME Shell with live thum
 ## Architecture Overview
 
 **Core Components:**
-- `extension.js` - Main extension (1881 lines) with three GObject classes:
-  - `WindowThumbnail` (lines 41-540): Individual window preview with live clones, close button, context menu, and single/double-click handling
-  - `StageManagerPanel` (lines 541-1123): Side panel container with scroll view, resize handle with grip dots, and theme detection
-  - `ObisionExtensionGrid` (lines 1124-1881): Main extension class managing lifecycle, window tracking, hot edge, and panel animations
+- `extension.js` - Main extension (~1966 lines) with three GObject classes:
+  - `WindowThumbnail` (lines 41-439): Individual window preview with live clones, close button, context menu, and single/double-click handling
+  - `StageManagerPanel` (lines 440-1151): Side panel container with scroll view, resize handle with grip dots, and theme detection
+  - `ObisionExtGrid` (lines 1152-end): Main extension class extending `Extension`, managing lifecycle, window tracking, hot edge, and panel animations
 - `prefs.js` - Adwaita preferences UI extending `ExtensionPreferences` with custom shortcut dialog
 - `stylesheet.css` - Theme-aware styling with 9 GNOME accent color variants (blue, teal, green, yellow, orange, red, pink, purple, slate)
 
@@ -24,15 +24,19 @@ A Stage Manager-style window management extension for GNOME Shell with live thum
 ### Build & Deploy
 ```bash
 npm run build               # Compile schemas + pack extension with gnome-extensions pack
-npm install                 # NOT needed - no npm dependencies (only devDependencies for linting)
+npm install                 # Install devDependencies (eslint, prettier) for code quality
 npm run deploy              # Build + install + show reload instructions
 npm run update              # Build + install + reload (X11 only - uses scripts/reload.sh)
+npm run enable              # Enable the extension after installation
+npm run clean               # Remove build artifacts (builddir/, gschemas.compiled)
 ```
 
-**IMPORTANT**: Extension UUID must match everywhere: `obision-extension-one-win@obision.com`
+**Note**: The extension has NO runtime npm dependencies - only devDependencies for linting/formatting.
+
+**IMPORTANT**: Extension UUID must match everywhere: `obision-ext-one-win@obision.com`
 - `metadata.json`: `"uuid"` field
-- `schemas/*.gschema.xml`: `<schema id="com.obision.extension-one-win">` (uses dot notation)
-- `metadata.json`: `"settings-schema": "com.obision.extension-one-win"`
+- `schemas/*.gschema.xml`: `<schema id="com.obision.ext.one-win">` (uses dot notation)
+- `metadata.json`: `"settings-schema": "com.obision.ext.one-win"
 
 ### Testing Changes
 - **X11**: `npm run reload` or `Alt+F2` → `r` → `Enter`
@@ -41,7 +45,7 @@ npm run update              # Build + install + reload (X11 only - uses scripts/
 - Always test after modifying signal connections or GObject properties
 
 ### Schema Changes
-After modifying `schemas/com.obision.extension-one-win.gschema.xml`:
+After modifying `schemas/com.obision.ext.one-win.gschema.xml`:
 1. Run `npm run compile-schemas` (or `glib-compile-schemas schemas/`)
 2. Reinstall extension with `npm run install`
 3. Restart GNOME Shell
@@ -114,9 +118,9 @@ When modifying layout, maintain this calculation chain or thumbnails will clip/o
 
 ### `extension.js` Structure
 - Lines 1-39: Constants and dimension calculation utilities
-- Lines 41-540: `WindowThumbnail` class (thumbnails with clones, close button, context menu)
-- Lines 541-1123: `StageManagerPanel` class (scroll container, resize handle, thumbnail management)
-- Lines 1124-1881: `ObisionExtensionGrid` extension class (lifecycle, signals, window tracking)
+- Lines 41-439: `WindowThumbnail` class (thumbnails with clones, close button, context menu)
+- Lines 440-1151: `StageManagerPanel` class (scroll container, resize handle, thumbnail management)
+- Lines 1152-1966: `ObisionExtGrid` extension class (lifecycle, signals, window tracking)
 
 **Key Methods:**
 - `_updateLayout()`: Refreshes thumbnail list, respects window focus history
@@ -161,6 +165,7 @@ View logs: `journalctl -f -o cat /usr/bin/gnome-shell`
 npm run lint          # ESLint check
 npm run lint:fix      # Auto-fix issues
 npm run format        # Prettier formatting
+npm run format:check  # Check formatting without modifying files
 ```
 
-ESLint configured for GJS globals (`log`, `logError`, `imports`). TypeScript checking enabled via `tsconfig.json` with `checkJs: true`.
+ESLint configured for GJS globals (`log`, `logError`, `imports`, `global`, `ARGV`) in `.eslintrc.json`. Uses `eslint:recommended` with Prettier integration.

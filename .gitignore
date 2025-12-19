@@ -11,7 +11,7 @@ node_modules/
 # Build output
 *.zip
 *.shell-extension.zip
-obision-extension-one-win@obision.com.shell-extension.zip
+obision-ext-one-win@obision.com.shell-extension.zip
 
 # Compiled schemas
 schemas/gschemas.compiled
