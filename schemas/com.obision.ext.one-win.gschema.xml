@@ -10,7 +10,7 @@
     </key>
 
     <key name="toggle-grid" type="as">
-      <default>['&lt;Super&gt;g']</default>
+      <default>['&lt;Super&gt;o']</default>
       <summary>Toggle One UI</summary>
       <description>Keyboard shortcut to show/hide the One UI panel</description>
     </key>

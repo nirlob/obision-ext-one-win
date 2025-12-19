@@ -1003,12 +1003,12 @@ const StageManagerPanel = GObject.registerClass(
             this._headerMenu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
             // Get the toggle-grid shortcut from settings
-            let shortcutText = 'Super+G';
+            let shortcutText = 'Super+O';
             try {
                 if (this._settings) {
                     const shortcuts = this._settings.get_strv('toggle-grid');
                     if (shortcuts && shortcuts.length > 0) {
-                        // Convert <Super>g to Super+G format
+                        // Convert <Super>o to Super+O format
                         shortcutText = shortcuts[0]
                             .replace(/<([^>]+)>/g, '$1+')
                             .replace(/\+([a-z])/g, (match, p1) => '+' + p1.toUpperCase());

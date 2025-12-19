@@ -9,7 +9,7 @@ A Stage Manager-style window management extension for GNOME Shell with live thum
 - **Active Window Area**: Main workspace for the focused application
 - **Real-time Window Clones**: Thumbnail previews using compositor textures
 - **Quick Switching**: Click any thumbnail to activate that window
-- **Keyboard Shortcut**: Toggle Stage Manager with `Super+G` (configurable)
+- **Keyboard Shortcut**: Toggle Stage Manager with `Super+O` (configurable)
 - **Resizable Panel**: Drag the resize handle to adjust panel width
 - **Theme Integration**: Automatic light/dark theme detection with GNOME accent colors
 - **Auto-minimize**: Optionally minimize inactive windows
@@ -180,7 +180,7 @@ Available settings:
 - **Panel Position**: Display panel on left or right side
 - **Auto-minimize**: Minimize windows not shown in panel
 - **Show App Names**: Display application names below thumbnails
-- **Toggle Shortcut**: Keyboard shortcut (default: `Super+G`)
+- **Toggle Shortcut**: Keyboard shortcut (default: `Super+O`)
 
 ## Usage
 
@@ -190,7 +190,7 @@ Available settings:
 4. **Single click** a thumbnail to activate that window
 5. **Double click** a thumbnail to activate and maximize
 6. **Right click** a thumbnail for context menu (new window, close, etc.)
-7. Press `Super+G` to toggle Stage Manager on/off
+7. Press `Super+O` to toggle Stage Manager on/off
 8. Drag the resize handle on the panel to adjust width
 
 **Window Management:**

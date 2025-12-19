@@ -105,7 +105,7 @@ export default class ObisionExtGridPreferences extends ExtensionPreferences {
 
     _formatShortcut(shortcut) {
         // GTK format is like: <Super>g, <Primary><Shift>t, etc.
-        // We want: Super+G, Ctrl+Shift+T, etc.
+        // We want: Super+O, Ctrl+Shift+T, etc.
 
         // Split by < and > to get individual parts
         const parts = shortcut.split(/[<>]/).filter(part => part.length > 0);
